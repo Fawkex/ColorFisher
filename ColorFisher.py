@@ -32,13 +32,13 @@ import threading
 from PIL import Image
 import numpy as np
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 working = False
 hooked_threshold = 2
-allowed_color_shift = [5, 5, 5]
+allowed_color_shift = [10, 10, 10]
 
 def wait():
     while True:
@@ -131,6 +131,8 @@ def main():
             timeout=1, trigger_on_release=False)
     keyboard.add_hotkey('f8', get_to_rest, args=(), suppress=False,
             timeout=1, trigger_on_release=False)
+    logging.info('----------- ColorFisher -----------')
+    logging.info('Version: v%s' % __version__)
     logging.info('F7: Begin fishing, F8: End fishing.')
     wait()
 
