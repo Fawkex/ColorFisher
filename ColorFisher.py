@@ -32,10 +32,12 @@ import threading
 from PIL import Image
 import numpy as np
 
+__version__ = "1.1.0"
+
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 working = False
-hooked_threshold = 5
+hooked_threshold = 2
 allowed_color_shift = [5, 5, 5]
 
 def wait():
@@ -45,11 +47,10 @@ def wait():
         except KeyboardInterrupt:
             get_to_rest()
             logging.info('Exited.')
-            tf.reset_default_graph()
             sys.exit(0)
 
-crop_percent = 0.25
-target_size = 128, 128
+crop_percent = 0.4
+target_size = 256, 256
 def take_screenshot():
     sc = pyautogui.screenshot()
     width, height = sc.size
@@ -71,9 +72,10 @@ def count_color(img, color):
 def get_current_color_counts():
     img = take_screenshot()
     img_arr = np.array(img)
-    dark_red_count = count_color(img_arr, DARK_RED)
+    #dark_red_count = count_color(img_arr, DARK_RED)
     light_red_count = count_color(img_arr, LIGHT_RED)
-    return [dark_red_count, light_red_count]
+    #return [dark_red_count, light_red_count]
+    return light_red_count
 
 def fisherman_thread():
     global working
@@ -85,8 +87,8 @@ def fisherman_thread():
                 color_counts = get_current_color_counts()
             except:
                 continue
-            status = True if sum(color_counts) < hooked_threshold else False
-            logging.info('Dark red: %d Light red: %d Rod Status: %s.'% (color_counts[0], color_counts[1], 'Idling' if status else 'Luring'))
+            status = True if color_counts <= hooked_threshold else False
+            logging.info('Light red: %d Rod Status: %s.'% (color_counts, 'Idling' if status else 'Luring'))
             history.append(status)
             if len(history) > 100:
                 history = history[-100:]
