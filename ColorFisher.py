@@ -32,13 +32,12 @@ import threading
 from PIL import Image
 import numpy as np
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
 working = False
-hooked_threshold = 2
-allowed_color_shift = [10, 10, 10]
+hooked_threshold = 0
 
 def wait():
     while True:
@@ -63,19 +62,24 @@ def take_screenshot():
     resized = cropped.resize(target_size, resample=Image.NEAREST)
     return resized
 
-LIGHT_RED = [211, 42, 42]
-DARK_RED = [137, 20, 20]
+DARK_RED = [[137, 20, 20], [10, 5, 5]]
+LIGHT_RED = [[211, 42, 42], [10, 5, 5]]
+ROD_WHITE = [[208, 208, 208], [10, 10, 12]]
+ROD_GREY = [[143, 143, 143], [5, 5, 5]]
 def count_color(img, color):
-    count = sum(abs(img.reshape(-1, 3) - color) < allowed_color_shift).min()
+    count = sum(abs(img.reshape(-1, 3) - color[0]) <= color[1]).min()
     return count
 
 def get_current_color_counts():
     img = take_screenshot()
     img_arr = np.array(img)
     #dark_red_count = count_color(img_arr, DARK_RED)
+    dark_red_count = 65535
     light_red_count = count_color(img_arr, LIGHT_RED)
-    #return [dark_red_count, light_red_count]
-    return light_red_count
+    rod_white_count = count_color(img_arr, ROD_WHITE)
+    #rod_grey_count = count_color(img_arr, ROD_GREY)
+    rod_grey_count = 65535
+    return [dark_red_count, light_red_count, rod_white_count, rod_grey_count]
 
 def fisherman_thread():
     global working
@@ -87,8 +91,12 @@ def fisherman_thread():
                 color_counts = get_current_color_counts()
             except:
                 continue
-            status = True if color_counts <= hooked_threshold else False
-            logging.info('Light red: %d Rod Status: %s.'% (color_counts, 'Idling' if status else 'Luring'))
+            status = False
+            if color_counts[1] <= hooked_threshold:
+                status = True
+            if color_counts[1]+color_counts[2] <= 5:
+                status = True
+            logging.info('Light red: %d Rod white: %d Rod Status: %s.'% (color_counts[1], color_counts[2], 'Idling' if status else 'Luring'))
             history.append(status)
             if len(history) > 100:
                 history = history[-100:]
