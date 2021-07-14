@@ -24,7 +24,6 @@
 
 import sys
 import time
-import mouse
 import logging
 import keyboard
 import pyautogui
@@ -32,7 +31,7 @@ import threading
 from PIL import Image
 import numpy as np
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
@@ -96,7 +95,7 @@ def fisherman_thread():
                 status = True
             if color_counts[1]+color_counts[2] <= 5:
                 status = True
-            logging.info('Light red: %d Rod white: %d Rod Status: %s.'% (color_counts[1], color_counts[2], 'Idling' if status else 'Luring'))
+            logging.info('红色像素数量: %d 白色像素数量: %d 鱼竿状态: %s.'% (color_counts[1], color_counts[2], '闲置中' if status else '钓鱼中'))
             history.append(status)
             if len(history) > 100:
                 history = history[-100:]
@@ -104,16 +103,16 @@ def fisherman_thread():
                 if time.time() - last_click < 2:
                     continue
                 if all(history[-10:]):
-                    logging.info('We are not fishing yet.')
-                    logging.info('Throwing.')
-                    mouse.right_click()
+                    logging.info('还没在钓鱼.')
+                    logging.info('丢杆.')
+                    pyautogui.click(button='right')
                     last_click = time.time()
                 elif all(history[-1:]):
-                    logging.info('We have fish hooked. Retracting.')
-                    mouse.right_click()
+                    logging.info('有鱼上钩了. 收杆.')
+                    pyautogui.click(button='right')
                     time.sleep(0.8)
-                    logging.info('Throwing.')
-                    mouse.right_click()
+                    logging.info('丢杆.')
+                    pyautogui.click(button='right')
                     last_click = time.time()
                 else:
                     pass
@@ -124,12 +123,12 @@ def fisherman_thread():
 def get_to_work():
     global working
     working = True
-    logging.info('Fisherman started working.')
+    logging.info('钓鱼佬开始工作.')
 
 def get_to_rest():
     global working
     working = False
-    logging.info('Fisherman will take some rest.')
+    logging.info('钓鱼佬要休息了.')
     
 
 threading.Thread(target=fisherman_thread, daemon=True).start()
@@ -141,7 +140,16 @@ def main():
             timeout=1, trigger_on_release=False)
     logging.info('----------- ColorFisher -----------')
     logging.info('Version: v%s' % __version__)
-    logging.info('F7: Begin fishing, F8: End fishing.')
+    logging.info('F7: 开始钓鱼, F8: 停止钓鱼.')
+    logging.info('使用建议:')
+    logging.info('    ① 把游戏亮度调到最高.')
+    logging.info('    ② 游戏窗口最大化, 不需要全屏. 如果屏幕比例不是16:9, 可以把游戏窗口拉到16:9左右.')
+    logging.info('    ③ 钓鱼的地方需要有良好照明，否则夜间无法正常使用.')
+    logging.info('      在水面上留空两格，第三格插火把即可, 但不要挡住吊钩正上方天空.')
+    logging.info('      如果将游戏gamma参数设为500, 则可以不考虑照明问题.')
+    logging.info('    ④ 使用原版材质包, 程序根据原版浮标的颜色编写, 非原版可能无法正常使用.')
+    logging.info('    ⑤ （可选）将游戏场视角调至最低, 且保证抛竿角度可以使得每次抛竿后浮标都在准星附近.')
+    logging.info('      可极大提高识别准确率.')
     wait()
 
 if __name__ == '__main__':
