@@ -33,7 +33,7 @@ from PIL import Image
 import numpy as np
 
 INFO_LEVEL = logging.INFO
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 MAX_FPS = 5
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=INFO_LEVEL)
@@ -94,7 +94,7 @@ def count_color(img, color):
     start = time.time()
     diffs = np.subtract(reshaped, color[0])
     abs_diffs = np.absolute(diffs)
-    count = np.sum(abs_diffs <= color[1]).min()
+    count = np.sum(abs_diffs <= color[1], axis=0).min()
     logging.debug('Count Time: %.4f' % (time.time()-start))
     return count
 
