@@ -22,6 +22,7 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #
 
+import os
 import sys
 import time
 import logging
@@ -31,9 +32,11 @@ import threading
 from PIL import Image
 import numpy as np
 
-__version__ = "1.3.0"
+INFO_LEVEL = logging.INFO
+__version__ = "1.4.0"
+MAX_FPS = 5
 
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=INFO_LEVEL)
 
 working = False
 hooked_threshold = 0
@@ -47,9 +50,10 @@ def wait():
             logging.info('Exited.')
             sys.exit(0)
 
+# 截图函数
 crop_percent = 0.4
 target_size = 256, 256
-def take_screenshot():
+def default_take_screenshot():
     sc = pyautogui.screenshot()
     width, height = sc.size
     crop_size = int(min(width, height)*crop_percent)
@@ -61,12 +65,37 @@ def take_screenshot():
     resized = cropped.resize(target_size, resample=Image.NEAREST)
     return resized
 
+def d3d_take_screenshot():
+    width, height = d.display.resolution
+    crop_size = int(min(width, height)*crop_percent)
+    left = int((width - crop_size)/2)
+    top = int((height - crop_size)/2)
+    right = int((width + crop_size)/2)
+    bottom = int((height + crop_size)/2)
+    sc = d.screenshot(region=(left, top, right, bottom))
+    resized = sc.resize(target_size, resample=Image.NEAREST)
+    return resized
+
+# Windows下用DX效率更高
+if os.name == 'nt':
+    import d3dshot
+    d = d3dshot.create(capture_output="pil")
+    take_screenshot = d3d_take_screenshot
+    logging.debug('DirectX API Enabled.')
+else:
+    take_screenshot = default_take_screenshot
+
 DARK_RED = [[137, 20, 20], [10, 5, 5]]
 LIGHT_RED = [[211, 42, 42], [10, 5, 5]]
 ROD_WHITE = [[208, 208, 208], [10, 10, 12]]
 ROD_GREY = [[143, 143, 143], [5, 5, 5]]
 def count_color(img, color):
-    count = sum(abs(img.reshape(-1, 3) - color[0]) <= color[1]).min()
+    reshaped = img.reshape(-1, 3)
+    start = time.time()
+    diffs = np.subtract(reshaped, color[0])
+    abs_diffs = np.absolute(diffs)
+    count = np.sum(abs_diffs <= color[1]).min()
+    logging.debug('Count Time: %.4f' % (time.time()-start))
     return count
 
 def get_current_color_counts():
@@ -84,10 +113,24 @@ def fisherman_thread():
     global working
     last_click = time.time()
     history = []
+    frametime_history = []
+    fps_control_delay = 0.12
     while True:
         if working:
+            begin_time = time.time()
+            time.sleep(fps_control_delay)
             try:
                 color_counts = get_current_color_counts()
+                frametime_history.append(time.time()-begin_time)
+                average_frametime = np.average(frametime_history[-50:])
+                average_fps = 1/average_frametime
+                logging.debug('Average FPS: %.3f' % average_fps)
+                logging.debug('Average Frametime: %.3f ms' % (average_frametime*1000))
+                logging.debug('FPS Control Delay: %.3f ms' % (fps_control_delay*1000))
+                if average_fps > MAX_FPS:
+                    fps_control_delay += 0.0002
+                else:
+                    fps_control_delay = max(0, fps_control_delay-0.0002)
             except:
                 continue
             status = False
@@ -118,6 +161,7 @@ def fisherman_thread():
                     pass
         else:
             history = []
+            frametime_history = frametime_history[-100:]
             time.sleep(0.01)
 
 def get_to_work():
@@ -146,9 +190,10 @@ def main():
     logging.info('    ② 游戏窗口最大化, 不需要全屏. 如果屏幕比例不是16:9, 可以把游戏窗口拉到16:9左右.')
     logging.info('    ③ 钓鱼的地方需要有良好照明，否则夜间无法正常使用.')
     logging.info('      在水面上留空两格，第三格插火把即可, 但不要挡住吊钩正上方天空.')
-    logging.info('      如果将游戏gamma参数设为500, 则可以不考虑照明问题.')
-    logging.info('    ④ 使用原版材质包, 程序根据原版浮标的颜色编写, 非原版可能无法正常使用.')
-    logging.info('    ⑤ （可选）将游戏场视角调至最低, 且保证抛竿角度可以使得每次抛竿后浮标都在准星附近.')
+    logging.info('      如果将游戏 gamma 参数设为 500 , 则可以不考虑照明问题.')
+    logging.info('    ④ 使用原版材质包, 程序根据原版材质包中浮标的颜色编写, 非原版可能无法正常使用.')
+    logging.info('    ⑤ 游戏最高帧数可以限制至 10 FPS，将显著降低显卡功耗.')
+    logging.info('    ⑥ （可选）将游戏场视角调至最低, 且保证抛竿角度可以使得每次抛竿后浮标都在准星附近.')
     logging.info('      可极大提高识别准确率.')
     wait()
 
